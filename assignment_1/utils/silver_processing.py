@@ -3,6 +3,7 @@
 import os
 from datetime import datetime
 from pyspark.sql import SparkSession
+import pyspark.sql.functions as F
 from pyspark.sql.functions import col
 from pyspark.sql.types import IntegerType, StringType, DateType
 from utils.data_loading import load_data
@@ -79,6 +80,88 @@ def add_clickstream_data_silver(spark: SparkSession, date: str, bronze_directory
 
     # Save the cleaned data to the silver directory as parquet
     silver_partition_name = 'silver_clickstream_data_' + date.replace("-", "_") + '.parquet'
+    silver_filepath = os.path.join(silver_directory, silver_partition_name)
+
+    df.write.mode("overwrite").parquet(silver_filepath)
+    print(f"Successfully processed and saved data to {silver_filepath}.")
+
+    return
+
+
+def add_customer_attributes_silver(spark: SparkSession, date: str, bronze_directory: str, silver_directory: str):
+    '''
+    Function to process customer attributes data from bronze table to silver table. Enforces schema and data quality checks.
+    Args:
+        spark (SparkSession): Spark session object.
+        date (str): Date for which data is being processed (corresponds to partition). Format: 'YYYY-MM-DD'.
+        bronze_directory (str): Path to the bronze directory.
+        silver_directory (str): Path to the silver directory.
+    '''
+
+    # Check input arguments
+    if not os.path.exists(bronze_directory):
+        raise FileNotFoundError(f"Bronze directory {bronze_directory} does not exist.")
+    
+    # Load data from bronze directory
+    partition = 'bronze_customer_attributes_' + date.replace("-", "_") + '.csv'
+    df = load_data(spark, bronze_directory, partition)
+    bronze_count = df.count()
+    if df is None or bronze_count == 0:
+        raise ValueError(f"No data found in bronze directory for partition {partition}.")
+    
+    # Data quality checks
+
+    # drop columns name and ssn
+    df = df.drop("Name", "SSN")
+
+    # enforce schema
+    column_type_map = {
+        "Age": IntegerType(),
+        "Occupation": StringType(),
+        "Customer_ID": StringType(),
+        "snapshot_date": DateType()
+        }
+    for column, dtype in column_type_map.items():
+        df = df.withColumn(column, col(column).cast(dtype))
+
+    # Handle corrupted values (1 of 15 categories for occupation, sanity check for age, remove if customer_id or snapshot_date are corrupted)
+    df = df.filter(col("Customer_ID").isNotNull() | col("snapshot_date").isNotNull())
+    df = df.withColumn("Age", F.when((col("Age") >= 0) & (col("Age") <= 100), col("Age")).otherwise(0))
+    age_null_count = df.filter(col("Age") == 0).count()
+    df = df.withColumn("Occupation", 
+                       F.when(col("Occupation").isin([
+                           "Scientist", 
+                           "Media_Manager", 
+                           "Musician", 
+                           "Lawyer", 
+                           "Teacher", 
+                           "Developer", 
+                           "Writer", 
+                           "Architect", 
+                           "Mechanic", 
+                           "Entrepreneur", 
+                           "Journalist", 
+                           "Doctor", 
+                           "Engineer", 
+                           "Accountant", 
+                           "Manager", 
+                           "Other"
+                           ]), 
+                        col("Occupation")).otherwise("Other"))
+    occupation_null_count = df.filter(col("Occupation") == "Other").count()
+    # Remove duplicates
+    df = df.dropDuplicates(["Customer_ID", "snapshot_date"])
+    
+    # check for row count after cleaning
+    row_difference = df.count() - bronze_count
+    if any([row_difference, age_null_count, occupation_null_count]) > 0:
+        print(f"Warning: Cleaning resulted in {row_difference} rows removed, {age_null_count} age nulls, and {occupation_null_count} occupation nulls for partition {partition}.")
+
+    # Ensure that silver directory exists 
+    os.makedirs(os.path.dirname(silver_directory), exist_ok=True)
+
+    # Save the cleaned data to the silver directory as parquet
+    silver_partition_name = 'silver_customer_attributes_' + date.replace("-", "_") + '.parquet'
     silver_filepath = os.path.join(silver_directory, silver_partition_name)
 
     df.write.mode("overwrite").parquet(silver_filepath)
