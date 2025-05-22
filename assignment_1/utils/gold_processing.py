@@ -145,3 +145,4 @@ def encode_loan_types_with_counts(df: DataFrame, loan_column_name: str) -> DataF
         
     return df_processed
 
+
