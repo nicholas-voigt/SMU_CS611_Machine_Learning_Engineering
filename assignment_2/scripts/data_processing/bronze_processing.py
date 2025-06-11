@@ -68,3 +68,7 @@ if __name__ == "__main__":
 
     # call function to add data to bronze table
     add_data_bronze(date=args.date, input_file_path=args.input_path, bronze_table_name=args.bronze_name, spark=spark)
+
+    # Stop the Spark session
+    spark.stop()
+    print(f"\n\n---Bronze Store completed successfully for {args.date}---\n\n")
