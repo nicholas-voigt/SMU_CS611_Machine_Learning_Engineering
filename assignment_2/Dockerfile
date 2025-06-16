@@ -1,5 +1,5 @@
 # Use the official Apache Airflow image (adjust the version as needed)
-FROM apache/airflow:2.6.1
+FROM apache/airflow:2.11.0
 
 # Switch to root to install additional packages
 USER root

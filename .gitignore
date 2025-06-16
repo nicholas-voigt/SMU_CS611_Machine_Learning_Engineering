@@ -172,10 +172,11 @@ cython_debug/
 
 # data
 *.csv
+*.parquet/
+*/logs
 
 # mac
 .DS_Store
-*.parquet/
 
 # trash
 *.Trash*
