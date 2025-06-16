@@ -1,33 +1,25 @@
-# This function loads data from a CSV file into a Spark DataFrame
-
 import os
-import sys
-from datetime import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql import DataFrame
-from pyspark.sql.functions import col
 
+from helpers_data_processing import validate_file_path
 
 def load_data(spark: SparkSession, input_directory: str, partition: str | None) -> DataFrame:
     """
     Load data from a CSV file into a Spark DataFrame.
     Args:
         spark (SparkSession): The Spark session object.
-        input_directory (str): The directory to the input files. Files should be in CSV format.
+        input_directory (str): The directory to the input files. Files should be in CSV or Parquet format.
         partition (str): A specific partition to load. If not provided, all data in the given directory will be loaded.
     Returns:
         DataFrame: A Spark DataFrame containing the loaded data.
     """
-
-    # Check if the input directory exists
+    # Check if input directory exists
     if not os.path.exists(input_directory):
         raise FileNotFoundError(f"Input directory {input_directory} does not exist.")
-
     # If partition is provided, check if file exists and load it
     if partition:
-        file_path = os.path.join(input_directory, partition)
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File for partition {partition} does not exist in {input_directory}.")
+        file_path = validate_file_path(os.path.join(input_directory, partition))
         # Load CSV or parquet file based on the file extension
         if file_path.endswith('.parquet'):
             df = spark.read.parquet(file_path)
