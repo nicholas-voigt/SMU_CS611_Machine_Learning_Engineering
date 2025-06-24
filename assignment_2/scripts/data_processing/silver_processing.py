@@ -3,11 +3,11 @@ import argparse
 
 from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as F
-from pyspark.sql.types import IntegerType, StringType, DateType, DecimalType, FloatType, BooleanType
+from pyspark.sql.types import IntegerType, DateType
 
 from data_loading import load_data
 from helpers_data_processing import build_partition_name, transform_data_in_column, pyspark_df_info
-from configurations import bronze_data_dirs, silver_data_dirs, data_types
+from data_configuration import bronze_data_dirs, silver_data_dirs, data_types
 
 
 def silver_processing_clickstream_data(df: DataFrame):

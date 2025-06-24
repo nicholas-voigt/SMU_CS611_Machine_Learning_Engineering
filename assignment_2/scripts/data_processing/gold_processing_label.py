@@ -8,7 +8,7 @@ from pyspark.sql.types import StringType, IntegerType
 
 from data_loading import load_data
 from helpers_data_processing import build_partition_name, pyspark_df_info
-from configurations import silver_data_dirs, gold_data_dirs
+from data_configuration import silver_data_dirs, gold_data_dirs
 
 
 def create_label(df: DataFrame, dpd=30, mob=6):

@@ -5,7 +5,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
 from helpers_data_processing import validate_date, build_partition_name, pyspark_df_info
-from configurations import source_data_files, bronze_data_dirs
+from data_configuration import source_data_files, bronze_data_dirs
 
 
 def add_data_bronze(date: str, type: str, spark: SparkSession):
