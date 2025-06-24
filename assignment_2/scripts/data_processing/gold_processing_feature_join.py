@@ -6,7 +6,7 @@ import pyspark.sql.functions as F
 
 from data_loading import load_data
 from helpers_data_processing import build_partition_name, validate_date, pyspark_df_info
-from configurations import silver_data_dirs, gold_data_dirs
+from data_configuration import silver_data_dirs, gold_data_dirs
 
 
 if __name__ == "__main__":
@@ -28,58 +28,35 @@ if __name__ == "__main__":
     spark.sparkContext.setLogLevel("ERROR")
 
     # load all data
-    print(f"\nLoading all feature data for date: {date} from silver directory...\n")
+    print(f"\nLoading all feature data for date: {date} from silver directory...")
     table_dfs = {}
     for table_name, table_path in silver_data_dirs.items():
-        if table_name != 'loan_data':
-            partition_name = build_partition_name('silver', table_name, args.date, 'parquet')
-            table_dfs[table_name] = load_data(spark=spark, input_directory=table_path, partition=partition_name)
+        partition_name = build_partition_name('silver', table_name, args.date, 'parquet')
+        table_dfs[table_name] = load_data(spark=spark, input_directory=table_path, partition=partition_name)
 
+    # Step 1: For customers with label, select only snapshot dates which correspond to loan application date (months on book = 0)
+    print("\nExtracting customers with labels & their loan start date from label store...")
+    relevant_dates = table_dfs['loan_data'] \
+        .filter(F.col('mob') == 0) \
+        .select("Customer_ID", "snapshot_date") \
+        .withColumnRenamed("snapshot_date", "loan_start_date")
+    print(f"Number of customers where loan start date is given: {relevant_dates.count()}")
+
+    # Filter & aggregate clickstream data to include only relevant dates
+    print("Filtering clickstream data for customers with label & aggregating clickstream data to loan start date...")
+    clickstream_data_aggr = table_dfs['clickstream_data'] \
+        .join(relevant_dates, on="Customer_ID", how="inner") \
+        .filter(F.col('snapshot_date') <= F.col('loan_start_date')) \
+        .groupBy("Customer_ID", "snapshot_date") \
+        .agg(
+            *[F.avg(F.col(f"fe_{i}")).alias(f"fe_{i}_avg") for i in range(1, 21)]
+        )
+    
     # Join all dataframes to Feature Store
-    print("\nJoining current partitions to Feature Store...\n")
-
-    # Step 1: Prepare Attributes Table by renaming columns
-    df_attributes_renamed = table_dfs['customer_attributes'] \
-        .withColumnRenamed("snapshot_date", "attr_effective_date") \
-        .withColumnRenamed("Customer_ID", "attr_Customer_ID")
-
-    # Step 2: Join Clickstream with Attributes (As-Of Join)
-    window_attr = Window.partitionBy(F.col("cs.Customer_ID"), F.col("cs.snapshot_date")).orderBy(F.col("attr.attr_effective_date").desc())
-
-    df_cs_attr = table_dfs['clickstream_data'].alias("cs") \
-        .join(
-            df_attributes_renamed.alias("attr"), # Alias df_attributes_renamed as "attr" for this join
-            (F.col("cs.Customer_ID") == F.col("attr.attr_Customer_ID")) & # Use "attr." prefix
-            (F.col("cs.snapshot_date") >= F.col("attr.attr_effective_date")), # Use "attr." prefix
-            "left_outer"
-        ) \
-        .withColumn("attr_rank", F.row_number().over(window_attr)) \
-        .filter(F.col("attr_rank") == 1) \
-        .drop("attr_rank", "attr_Customer_ID", "attr_effective_date")
-
-    print("Joined Clickstream with Attributes via As-Of Join")
-    pyspark_df_info(df_cs_attr)
-
-    # Step 3: Prepare Aliases for Financials Table
-    df_financials_renamed = table_dfs['customer_financials'] \
-        .withColumnRenamed("snapshot_date", "fin_effective_date") \
-        .withColumnRenamed("Customer_ID", "fin_Customer_ID")
-
-    # Step 4: Join Clickstream-Attributes with Financials (As-Of Join)
-    window_fin = Window.partitionBy(F.col("cs_attr.Customer_ID"), F.col("cs_attr.snapshot_date")).orderBy(F.col("fin.fin_effective_date").desc())
-
-    df_feature_store = df_cs_attr.alias("cs_attr") \
-        .join(
-            df_financials_renamed.alias("fin"), # Alias df_financials_renamed as "fin" for this join
-            (F.col("cs_attr.Customer_ID") == F.col("fin.fin_Customer_ID")) &
-            (F.col("cs_attr.snapshot_date") >= F.col("fin.fin_effective_date")),
-            "left_outer"
-        ) \
-        .withColumn("fin_rank", F.row_number().over(window_fin)) \
-        .filter(F.col("fin_rank") == 1) \
-        .drop("fin_rank", "fin_Customer_ID", "fin_effective_date")
-
-    print("Joined Clickstream-Attributes with Financials via As-Of Join")
+    print("\nJoining current partitions to Feature Store...")
+    df = table_dfs['customer_attributes'].join(table_dfs['customer_financials'], on=(["Customer_ID", "snapshot_date"]), how="inner")
+    df_feature_store = df.join(clickstream_data_aggr, on=(["Customer_ID", "snapshot_date"]), how="left_outer")
+    print("Joined Customer Attributes, Customer Financials & Clickstream Data to Feature Store")
     pyspark_df_info(df_feature_store)
 
     # Ensure that gold directory exists
