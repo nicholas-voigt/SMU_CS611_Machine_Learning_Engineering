@@ -6,7 +6,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.types import IntegerType, DateType
 
 from data_loading import load_data
-from helpers_data_processing import build_partition_name, transform_data_in_column, pyspark_df_info
+from helpers_data_processing import build_partition_name, transform_data_in_column, pyspark_df_info, validate_date
 from data_configuration import bronze_data_dirs, silver_data_dirs, data_types
 
 
@@ -176,6 +176,7 @@ if __name__ == "__main__":
     # Validate input arguments
     if not args.date or not args.type:
         raise ValueError("All arguments --date and --type are required.")
+    date = validate_date(args.date)
 
     # Initialize Spark session
     spark = SparkSession.builder \
@@ -185,7 +186,7 @@ if __name__ == "__main__":
     spark.sparkContext.setLogLevel("ERROR")
 
     # Load data from bronze directory
-    partition = build_partition_name('bronze', args.type, args.date, 'csv')
+    partition = build_partition_name('bronze', args.type, date, 'csv') # type: ignore
     df = load_data(spark, bronze_data_dirs[args.type], partition)
     bronze_count = df.count()
 
@@ -215,7 +216,7 @@ if __name__ == "__main__":
     os.makedirs(os.path.dirname(silver_data_dirs[args.type]), exist_ok=True)
 
     # Save the cleaned data to the silver directory as parquet
-    partition_name = build_partition_name('silver', args.type, args.date, 'parquet')
+    partition_name = build_partition_name('silver', args.type, date, 'parquet') # type: ignore
     silver_filepath = os.path.join(silver_data_dirs[args.type], partition_name)
 
     df.write.mode("overwrite").parquet(silver_filepath)
@@ -223,4 +224,4 @@ if __name__ == "__main__":
 
     # Stop the Spark session
     spark.stop()
-    print(f"\n\n---Silver {args.type} Store completed successfully for {args.date}---\n\n")
+    print(f"\n\n---Silver {args.type} Store completed successfully for {date}---\n\n")

@@ -7,18 +7,19 @@ from pyspark.sql.types import DataType, StringType, IntegerType, FloatType, Date
 from pyspark.sql.functions import regexp_extract, col, count
 
 
-def validate_date(date_str):
+def validate_date(date_str: str, output_DateType: bool = False) -> datetime | str:
     """
     Validate the date string against the YYYY-MM-DD format.
     Args:
         date_str (str): The date string to validate.
+        output_dtype (DataType): The expected output data type, either DateType or StringType. Default is String.
     Returns:
-        datetime: The validated date as a datetime object.
+        datetime: The validated date as either a datetime object or a string.
     """
     if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
         raise ValueError(f"Invalid date format: {date_str}. Expected format is YYYY-MM-DD.")
     
-    return datetime.strptime(date_str, "%Y-%m-%d")
+    return datetime.strptime(date_str, "%Y-%m-%d") if output_DateType else date_str
 
 
 def validate_file_path(file_path):
@@ -108,10 +109,14 @@ def pyspark_df_info(df: DataFrame):
     
     num_columns = len(df.columns)
     print(f"Data columns (total {num_columns} columns):")
+
+    longest_col_name = max(len(col_name) for col_name in df.columns)
+    if longest_col_name < 25:
+        longest_col_name = 25
     
-    header = f"{'#':<3} {'Column':<25} {'Non-Null Count':<18} {'Dtype':<15}"
+    header = f"{'#':<3} {'Column':<{longest_col_name}} {'Non-Null Count':<18} {'Dtype':<15}"
     print(header)
-    print("--- " + "-"*25 + " " + "-"*18 + " " + "-"*15)
+    print("--- " + "-"*longest_col_name + " " + "-"*18 + " " + "-"*15)
 
     # get non-null counts for all columns
     agg_exprs = [count(c).alias(c) for c in df.columns]
@@ -119,5 +124,5 @@ def pyspark_df_info(df: DataFrame):
 
     for i, (col_name, col_type) in enumerate(df.dtypes):
         non_null_count = non_null_counts_row[col_name]
-        print(f"{i:<3} {col_name:<25} {non_null_count:<18} {col_type:<15}")
+        print(f"{i:<3} {col_name:<{longest_col_name}} {non_null_count:<18} {col_type:<15}")
     print("\n")

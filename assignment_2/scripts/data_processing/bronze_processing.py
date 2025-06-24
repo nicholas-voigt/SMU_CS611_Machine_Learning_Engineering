@@ -19,7 +19,7 @@ def add_data_bronze(date: str, type: str, spark: SparkSession):
     """
 
     # prepare arguments
-    snapshot_date = validate_date(date)
+    snapshot_date = validate_date(date, output_DateType=True)
     input_file = source_data_files[type]
     output_directory = bronze_data_dirs[type]
     if not os.path.exists(output_directory):
