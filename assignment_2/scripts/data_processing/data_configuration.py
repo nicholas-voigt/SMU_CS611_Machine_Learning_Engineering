@@ -1,32 +1,34 @@
 from pyspark.sql.types import StringType, IntegerType, FloatType, DateType, DecimalType, BooleanType
 
+BASE_DIR = "/opt/airflow/"
+# BASE_DIR = "" # For local testing, set to empty string
 
 # Source Data files
 source_data_files = {
-    'clickstream_data': 'data/feature_clickstream.csv',
-    'customer_attributes': 'data/features_attributes.csv',
-    'customer_financials': 'data/features_financials.csv',
-    'loan_data': 'data/lms_loan_daily.csv'
+    'clickstream_data': f'{BASE_DIR}data/feature_clickstream.csv',
+    'customer_attributes': f'{BASE_DIR}data/features_attributes.csv',
+    'customer_financials': f'{BASE_DIR}data/features_financials.csv',
+    'loan_data': f'{BASE_DIR}data/lms_loan_daily.csv'
 }
 
 # Data directories
 bronze_data_dirs = {
-    'clickstream_data': 'datamart/bronze/clickstream_data/',
-    'customer_attributes': 'datamart/bronze/customer_attributes/',
-    'customer_financials': 'datamart/bronze/customer_financials/',
-    'loan_data': 'datamart/bronze/loan_data/'
+    'clickstream_data': f'{BASE_DIR}datamart/bronze/clickstream_data/',
+    'customer_attributes': f'{BASE_DIR}datamart/bronze/customer_attributes/',
+    'customer_financials': f'{BASE_DIR}datamart/bronze/customer_financials/',
+    'loan_data': f'{BASE_DIR}datamart/bronze/loan_data/'
 }
 
 silver_data_dirs = {
-    'clickstream_data': 'datamart/silver/clickstream_data/',
-    'customer_attributes': 'datamart/silver/customer_attributes/',
-    'customer_financials': 'datamart/silver/customer_financials/',
-    'loan_data': 'datamart/silver/loan_data/'
+    'clickstream_data': f'{BASE_DIR}datamart/silver/clickstream_data/',
+    'customer_attributes': f'{BASE_DIR}datamart/silver/customer_attributes/',
+    'customer_financials': f'{BASE_DIR}datamart/silver/customer_financials/',
+    'loan_data': f'{BASE_DIR}datamart/silver/loan_data/'
 }
 
 gold_data_dirs = {
-    'feature_store': 'datamart/gold/feature_store/',
-    'label_store': 'datamart/gold/label_store/'
+    'feature_store': f'{BASE_DIR}datamart/gold/feature_store/',
+    'label_store': f'{BASE_DIR}datamart/gold/label_store/'
 }
 
 

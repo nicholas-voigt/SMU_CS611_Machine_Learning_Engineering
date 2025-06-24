@@ -1,5 +1,5 @@
 # Use the official Apache Airflow image (adjust the version as needed)
-FROM apache/airflow:2.11.0
+FROM apache/airflow:2.11.0-python3.12
 
 # Switch to root to install additional packages
 USER root
