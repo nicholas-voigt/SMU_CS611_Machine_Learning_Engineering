@@ -102,6 +102,9 @@ def one_hot_encode(df: DataFrame, column: str, drop_label: str) -> DataFrame:
             F.when(F.col(indexed_col_name) == float(i), 1).otherwise(0).cast(IntegerType())
         )
     
+    # Drop original encoded column
+    df_ohe = df_ohe.drop(column)
+    
     return df_ohe
 
 
@@ -139,6 +142,9 @@ def encode_loan_types_with_counts(df: DataFrame, loan_column_name: str) -> DataF
                  F.regexp_count(F.col(loan_column_name), F.lit(loan_type))
             ).otherwise(0).cast(IntegerType())
         )
+    
+    # Drop the original loan column
+    df_processed = df_processed.drop(loan_column_name)
         
     return df_processed
 
