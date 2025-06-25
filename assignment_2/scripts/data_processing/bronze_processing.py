@@ -4,8 +4,8 @@ import argparse
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
-from helpers_data_processing import validate_date, build_partition_name, pyspark_df_info
-from data_configuration import source_data_files, bronze_data_dirs
+from utils.validators import validate_date, build_partition_name, pyspark_info
+from configs.data import source_data_files, bronze_data_dirs
 
 
 def add_data_bronze(date: str, type: str, spark: SparkSession):
@@ -31,7 +31,7 @@ def add_data_bronze(date: str, type: str, spark: SparkSession):
     print(f"Loaded data from {input_file}. Row count: {df.count()}")
 
     # Show DataFrame information
-    pyspark_df_info(df)
+    pyspark_info(df)
 
     # save bronze table to datamart
     partition_name = build_partition_name('bronze', type, date, 'csv')

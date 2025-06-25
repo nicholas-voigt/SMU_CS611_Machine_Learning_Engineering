@@ -5,9 +5,9 @@ from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.types import IntegerType, DateType
 
-from data_loading import load_data
-from helpers_data_processing import build_partition_name, transform_data_in_column, pyspark_df_info, validate_date
-from data_configuration import bronze_data_dirs, silver_data_dirs, data_types
+from utils.data import load_data, transform_data_in_column
+from utils.validators import build_partition_name, pyspark_info, validate_date
+from configs.data import bronze_data_dirs, silver_data_dirs, data_types
 
 
 def silver_processing_clickstream_data(df: DataFrame):
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     silver_count = df.count()
     if silver_count != bronze_count:
         print(f"Warning: Row count changed from {bronze_count} to {silver_count} after cleaning for partition {partition}.")
-    pyspark_df_info(df)
+    pyspark_info(df)
 
     # Ensure that silver directory exists
     os.makedirs(os.path.dirname(silver_data_dirs[args.type]), exist_ok=True)

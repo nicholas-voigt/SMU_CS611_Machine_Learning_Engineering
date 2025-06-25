@@ -6,9 +6,9 @@ import pyspark.sql.functions as F
 from pyspark.sql.functions import col
 from pyspark.sql.types import StringType, IntegerType
 
-from data_loading import load_data
-from helpers_data_processing import build_partition_name, pyspark_df_info
-from data_configuration import silver_data_dirs, gold_data_dirs
+from utils.data import load_data
+from utils.validators import build_partition_name, pyspark_info
+from configs.data import silver_data_dirs, gold_data_dirs
 
 
 def create_label(df: DataFrame, dpd=30, mob=6):
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     df = create_label(df, dpd=30, mob=6)
 
     # check data after processing
-    pyspark_df_info(df)
+    pyspark_info(df)
 
     # Ensure that gold label store directory exists
     os.makedirs(os.path.dirname(gold_data_dirs['label_store']), exist_ok=True)

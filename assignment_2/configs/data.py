@@ -1,7 +1,7 @@
 from pyspark.sql.types import StringType, IntegerType, FloatType, DateType, DecimalType, BooleanType
 
-BASE_DIR = "/opt/airflow/"
-# BASE_DIR = "" # For local testing, set to empty string
+# BASE_DIR = "/opt/airflow/"
+BASE_DIR = "" # For local testing, set to empty string
 
 # Source Data files
 source_data_files = {
@@ -11,7 +11,7 @@ source_data_files = {
     'loan_data': f'{BASE_DIR}data/lms_loan_daily.csv'
 }
 
-# Data directories
+# Datalake Medallion directories
 bronze_data_dirs = {
     'clickstream_data': f'{BASE_DIR}datamart/bronze/clickstream_data/',
     'customer_attributes': f'{BASE_DIR}datamart/bronze/customer_attributes/',
@@ -31,6 +31,8 @@ gold_data_dirs = {
     'label_store': f'{BASE_DIR}datamart/gold/label_store/'
 }
 
+# Training Data directory
+training_data_dir = f'{BASE_DIR}datamart/training/'
 
 # Data Type configurations
 data_types = {

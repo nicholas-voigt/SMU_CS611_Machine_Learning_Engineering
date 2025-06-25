@@ -7,9 +7,9 @@ import pyspark.sql.functions as F
 from pyspark.ml.feature import StringIndexer
 from pyspark.sql.types import IntegerType
 
-from data_loading import load_data
-from helpers_data_processing import build_partition_name, validate_date, pyspark_df_info
-from data_configuration import silver_data_dirs, gold_data_dirs
+from utils.data import load_data
+from utils.validators import build_partition_name, validate_date, pyspark_info
+from configs.data import silver_data_dirs, gold_data_dirs
 
 
 def join_feature_tables(spark: SparkSession, date: str) -> DataFrame:
@@ -23,7 +23,7 @@ def join_feature_tables(spark: SparkSession, date: str) -> DataFrame:
     print(f"\nLoading all feature data for date: {date} from silver directory...")
     table_dfs = {}
     for table_name, table_path in silver_data_dirs.items():
-        partition_name = build_partition_name('silver', table_name, args.date, 'parquet')
+        partition_name = build_partition_name('silver', table_name, date, 'parquet')
         table_dfs[table_name] = load_data(spark=spark, input_directory=table_path, partition=partition_name)
 
     # Step 1: For customers with label, select only snapshot dates which correspond to loan application date (months on book = 0)
@@ -49,7 +49,7 @@ def join_feature_tables(spark: SparkSession, date: str) -> DataFrame:
     df = table_dfs['customer_attributes'].join(table_dfs['customer_financials'], on=(["Customer_ID", "snapshot_date"]), how="inner")
     df = df.join(clickstream_data_aggr, on=(["Customer_ID", "snapshot_date"]), how="left_outer")
     print("Joined Customer Attributes, Customer Financials & Clickstream Data")
-    pyspark_df_info(df)
+    pyspark_info(df)
 
     return df
 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     df = encode_loan_types_with_counts(df=df, loan_column_name="Type_of_Loan")
 
     print("Feature Engineering completed.")
-    pyspark_df_info(df)
+    pyspark_info(df)
     
     # Ensure that gold directory exists
     os.makedirs(os.path.dirname(gold_data_dirs['feature_store']), exist_ok=True)
