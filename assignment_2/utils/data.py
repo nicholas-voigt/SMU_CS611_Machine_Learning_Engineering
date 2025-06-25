@@ -1,4 +1,8 @@
 import os
+import re
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.types import DataType, StringType, IntegerType, FloatType, DateType, DecimalType, BooleanType
 from pyspark.sql.functions import regexp_extract, col
@@ -99,3 +103,38 @@ def transform_data_in_column(df: DataFrame, column_name: str, dtype: DataType):
     # Cast the column to the specified data type & return the DataFrame
     return df.withColumn(column_name, df[column_name].try_cast(dtype))
 
+
+def check_partition_availability(store_dir: str, start_date: datetime, end_date: datetime) -> bool:
+    """
+    Checks if the respective store (feature or label) contains monthly partitions for the given time frame.
+    Args:
+        store_dir (str): Path to the directory containing feature store files.
+        start_date (datetime): Start date of the time frame to check.
+        end_date (datetime): End date of the time frame to check.
+    Returns:
+        bool: True if at monthly partitions exist for this time frame, False otherwise.
+    """
+    pattern = re.compile(r"gold_[feature|label]_store_(\d{4})_(\d{2})_(\d{2})\.parquet")
+    partition_dates = []
+
+    for fname in os.listdir(store_dir):
+        match = pattern.match(fname)
+        if match:
+            year, month, day = map(int, match.groups())
+            partition_dates.append(datetime(year, month, day))
+
+    if not partition_dates:
+        print(f"No partitions found in {store_dir}.")
+        return False
+
+    partition_dates = sorted(set(partition_dates)) # Remove duplicates and sort
+
+    current_date = start_date
+    while current_date <= end_date:
+        if current_date not in partition_dates:
+            print(f"Missing partition for date: {current_date.strftime('%Y-%m-%d')}")
+            return False
+        current_date += relativedelta(months=1)  # Increment by one month
+
+    print(f"All monthly partitions are available in {store_dir} for the period from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}.")
+    return True
