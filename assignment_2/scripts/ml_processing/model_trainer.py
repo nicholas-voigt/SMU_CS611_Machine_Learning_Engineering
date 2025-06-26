@@ -10,7 +10,7 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 
 from configs.data import training_data_dir, model_registry_dir
-from configs.models import gbt, logreg
+from configs.models import get_gbt_classifier, get_log_reg_classifier
 
 
 if __name__ == "__main__":
@@ -52,19 +52,20 @@ if __name__ == "__main__":
     )
     
     # Load Model Configuration
-    model, param_grid = (gbt['model'], gbt['param_grid']) if model_type == 'gbt' else (logreg['model'], logreg['param_grid'])
+    base_model, param_grid = get_gbt_classifier() if model_type == 'gbt' else get_log_reg_classifier()
 
     # Prepare pipeline
-    pipeline = Pipeline(stages=[assembler, model])
+    pipeline = Pipeline(stages=[assembler, base_model])
     evaluator = BinaryClassificationEvaluator(labelCol='label', metricName='areaUnderROC')
 
     # Fit and tune the model
     print("\nStarting model training and hyperparameter tuning...")
+    print(f"Size of parameter grid: {len(param_grid)} combinations")
     results = []
     for params in tqdm.tqdm(param_grid, desc="Training models", unit="model"):
         # Set parameters for this run
         for param, value in params.items():
-            model._set(**{param.name: value})
+            base_model._set(**{param.name: value})
 
         # Fit pipeline on train_df
         model = pipeline.fit(train_df)
