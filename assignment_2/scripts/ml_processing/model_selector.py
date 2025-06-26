@@ -13,43 +13,50 @@ def load_metrics(metrics_path):
 
 
 def select_best_model(models_dir, criterion="val_auc"):
-    best_score = float('-inf')
+    best_score = 0
     best_model = None
-    best_info = None
+    best_metadata = None
 
     for model_name in os.listdir(models_dir):
-        model_path = os.path.join(models_dir, model_name, "model")
-        metrics_path = os.path.join(models_dir, model_name, "metrics.json")
-        if not os.path.exists(model_path) or not os.path.exists(metrics_path):
-            continue
+        model_sub_dir = os.path.join(models_dir, model_name)
+        
+        for element in os.listdir(model_sub_dir):
+            if os.path.isdir(os.path.join(model_sub_dir, element)):
+                # Get the model and metadata paths
+                model_path = os.path.join(model_sub_dir, element)
+                metadata_path = os.path.join(model_sub_dir, f'{element}_metadata.json')
 
-        # Load model and metrics
-        model = PipelineModel.load(model_path)
-        metrics = load_metrics(metrics_path)
+                # Load model and metadata
+                print(f"Loading model: {model_name} from {model_path} and metadata from {metadata_path}")
+                model = PipelineModel.load(model_path)
+                metadata = load_metrics(metadata_path)
 
-        # Use the specified criterion (e.g., val_auc, test_auc, etc.)
-        score = metrics.get(criterion)
-        if score is not None and score > best_score:
-            best_score = score
-            best_model = model
-            best_info = {
-                "model_name": model_name,
-                "metrics": metrics
-            }
+                score = metadata['metrics'].get(criterion, 0)
+                print(f"Model: {model_name}, {criterion}: {score}")
 
-    if best_model and best_info:
-        print(f"Best model: {best_info['model_name']}")
-        print("Metrics:", best_info["metrics"])
-        return best_model, best_info
+                # Check performance metrics
+                if score > best_score:
+                    best_score = score
+                    best_model = model
+                    best_metadata = metadata
+
+            elif element.endswith('metadata.json'):
+                continue
+            else:
+                raise ValueError(f"Unexpected file structure in {model_sub_dir}")
+
+    if best_model and best_metadata:
+        print(f"Best model: {best_model}")
+        print("Metrics:", best_metadata["metrics"])
+        return best_model, best_metadata
     else:
-        print("No valid models found.")
-        return None, None
+        raise ValueError("No valid models found in the registry directory.")
 
 
 if __name__ == "__main__":
     # Initialize Spark session
     spark = SparkSession.builder \
-        .appName("Training Data Preparation") \
+        .appName("Model Selection") \
         .master("local[*]") \
         .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
