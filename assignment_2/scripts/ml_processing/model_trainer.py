@@ -1,16 +1,15 @@
 import os
 import argparse
 import tqdm
+from datetime import datetime
+import json
 
 from pyspark.sql import SparkSession
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 
-import mlflow
-import mlflow.spark
-
-from configs.data import training_data_dir
+from configs.data import training_data_dir, model_registry_dir
 from configs.models import gbt, logreg
 
 
@@ -22,11 +21,11 @@ if __name__ == "__main__":
     model_type = args.model_type
 
     # Initialize Spark session
-    sparksession = SparkSession.builder \
+    spark = SparkSession.builder \
         .appName("Model Trainer") \
         .master("local[*]") \
         .getOrCreate()
-    sparksession.sparkContext.setLogLevel("ERROR")
+    spark.sparkContext.setLogLevel("ERROR")
 
     # Load all datasets from the training directory
     print(f"\nLoading datasets from {training_data_dir}...")
@@ -34,7 +33,7 @@ if __name__ == "__main__":
     for sets in os.listdir(training_data_dir):
         if sets.endswith('.parquet'):
             dataset_name = sets.split('.')[0]  # Remove the .parquet extension
-            datasets[dataset_name] = sparksession.read.parquet(os.path.join(training_data_dir, sets))
+            datasets[dataset_name] = spark.read.parquet(os.path.join(training_data_dir, sets))
         else:
             print(f"Skipping unsupported file format: {sets}")
 
@@ -86,7 +85,7 @@ if __name__ == "__main__":
     # Find the best model by validation AUC & evaluating on test and OOT datasets
     print("\nExtracting the best model based on validation AUC & evaluating on test & oot data...")
     best_result = max(results, key=lambda x: x['metrics']['val_auc'])
-    best_model = best_result['model']
+    best_model = best_result.pop('model')
 
     test_predictions = best_model.transform(test_df)
     best_result['metrics']['test_auc'] = evaluator.evaluate(test_predictions)
@@ -101,28 +100,28 @@ if __name__ == "__main__":
         feature_importances = best_model.stages[-1].featureImportances.toArray()
     else:
         feature_importances = best_model.stages[-1].coefficients.toArray()
-    top_features = sorted(zip(assembler.getInputCols(), feature_importances), key=lambda x: x[1], reverse=True)[:10]
+    best_result['top_features'] = sorted(zip(assembler.getInputCols(), feature_importances), key=lambda x: x[1], reverse=True)[:10]
 
     # Log results, features and model to mlflow
     print("\nTraining completed. Best model:")
     for set, metrics in best_result['metrics'].items():
         print(f"{set}: {metrics}")
     print("Top 10 features:")
-    for feature, importance in top_features:
+    for feature, importance in best_result['top_features']:
         print(f"{feature}: {importance}")
 
-    with mlflow.start_run():
-        # Log parameters and metrics
-        mlflow.log_params(best_result['params'])
-        for metric, score in best_result['metrics'].items():
-            mlflow.log_metric(metric, score)
-        
-        # Log the model
-        mlflow.spark.log_model(
-            best_model, "model", 
-            registered_model_name=f"{model_type.upper()}_Classifier_Model"
-        )
+    # Save the best model
+    model_dir = os.path.join(model_registry_dir, model_type)
+    model_name = f"{model_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    os.makedirs(model_dir, exist_ok=True)
+
+    # Save the corresponding metadata
+    best_model.save(os.path.join(model_dir, model_name))
+    with open(f"{os.path.join(model_dir, model_name)}_metadata.json", "w") as f:
+        json.dump(best_result, f, indent=4)
     
+    print(f"\nBest model saved to {os.path.join(model_dir, model_name)} and metadata saved to {os.path.join(model_dir, model_name)}_metadata.json")
+
     # Stop Spark session
-    sparksession.stop()
+    spark.stop()
     print("\n\nModel training and logging completed successfully.\n\n")

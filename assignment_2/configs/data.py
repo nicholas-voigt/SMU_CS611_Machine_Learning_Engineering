@@ -34,6 +34,9 @@ gold_data_dirs = {
 # Training Data directory
 training_data_dir = f'{BASE_DIR}datamart/training/'
 
+# Model Registry directory
+model_registry_dir = f'{BASE_DIR}model_registry/'
+
 # Data Type configurations
 data_types = {
     'clickstream_data': {

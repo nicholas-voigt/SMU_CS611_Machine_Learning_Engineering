@@ -76,12 +76,18 @@ with DAG(
         ),
     )
 
-    model_automl_completed = EmptyOperator(task_id="model_automl_completed")
+    model_promote_best = BashOperator(
+        task_id='model_promote_best',
+        bash_command=(
+            'cd /opt/airflow/scripts/ml_processing && '
+            'python model_selector.py'
+        ),
+    )
 
     # --- Task Dependencies ---
 
     check_label_store_availability >> prepare_data # type: ignore
     check_feature_store_availability >> prepare_data # type: ignore
 
-    model_automl_start >> model_xgb_train >> model_automl_completed # type: ignore
-    model_automl_start >> model_logreg_train >> model_automl_completed # type: ignore
+    model_automl_start >> model_xgb_train >> model_promote_best # type: ignore
+    model_automl_start >> model_logreg_train >> model_promote_best # type: ignore
