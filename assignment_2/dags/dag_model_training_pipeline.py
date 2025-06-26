@@ -60,9 +60,21 @@ with DAG(
 
     model_automl_start = EmptyOperator(task_id="model_inference") # necessary?
 
-    model_xgb_train = EmptyOperator(task_id="model_xgb_train")
+    model_xgb_train = BashOperator(
+        task_id='model_xgb_train',
+        bash_command=(
+            'cd /opt/airflow/scripts/ml_processing && '
+            'python model_trainer.py --model_type gbt'
+        ),
+    )
 
-    model_logreg_train = EmptyOperator(task_id="model_logreg_train")
+    model_logreg_train = BashOperator(
+        task_id='model_logreg_train',
+        bash_command=(
+            'cd /opt/airflow/scripts/ml_processing && '
+            'python model_trainer.py --model_type logreg'
+        ),
+    )
 
     model_automl_completed = EmptyOperator(task_id="model_automl_completed")
 
