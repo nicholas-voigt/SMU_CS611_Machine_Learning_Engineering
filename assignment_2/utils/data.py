@@ -78,7 +78,7 @@ def transform_data_in_column(df: DataFrame, column_name: str, dtype: DataType):
 
     # Regex pattern depending on the data type
     if isinstance(dtype, StringType):
-        pattern = r'^[a-zA-Z0-9_]+$'  # Alphanumeric and underscore
+        pattern = r'.*'  # no selection (everything is allowed)
     elif isinstance(dtype, IntegerType):
         pattern = r'^\d+$'  # Digits only
     elif isinstance(dtype, FloatType) or isinstance(dtype, DecimalType):
