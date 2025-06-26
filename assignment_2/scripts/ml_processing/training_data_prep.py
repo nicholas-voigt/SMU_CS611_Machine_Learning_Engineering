@@ -39,7 +39,7 @@ def load_and_merge_data(spark: SparkSession, datelist: list) -> DataFrame:
         df_feature_store = feature_store[0]
         df_label_store = label_store[0]
 
-        for i in range(1, train_size):
+        for i in range(1, len(feature_store)):
             df_feature_store = df_feature_store.unionByName(feature_store[i])
             df_label_store = df_label_store.unionByName(label_store[i])
 
