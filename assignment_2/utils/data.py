@@ -114,14 +114,18 @@ def check_partition_availability(store_dir: str, start_date: datetime, end_date:
     Returns:
         bool: True if at monthly partitions exist for this time frame, False otherwise.
     """
-    pattern = re.compile(r"gold_[feature|label]_store_(\d{4})_(\d{2})_(\d{2})\.parquet")
+    pattern = re.compile(r"(\d{4})_(\d{2})_(\d{2})")  # Pattern for YYYY_MM_DD format
     partition_dates = []
 
     for fname in os.listdir(store_dir):
-        match = pattern.match(fname)
+        match = pattern.search(fname)
         if match:
-            year, month, day = map(int, match.groups())
-            partition_dates.append(datetime(year, month, day))
+            date_str = match.group(0)
+            try:
+                partition_date = datetime.strptime(date_str, "%Y_%m_%d")
+                partition_dates.append(partition_date)
+            except ValueError:
+                continue
 
     if not partition_dates:
         print(f"No partitions found in {store_dir}.")
@@ -136,5 +140,4 @@ def check_partition_availability(store_dir: str, start_date: datetime, end_date:
             return False
         current_date += relativedelta(months=1)  # Increment by one month
 
-    print(f"All monthly partitions are available in {store_dir} for the period from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}.")
     return True

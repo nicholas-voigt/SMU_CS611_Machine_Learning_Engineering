@@ -1,6 +1,14 @@
 import random
 
 
+# -------------- Default Training Values --------------
+DEFAULT_TRAINING_VALUES = {
+    'start_date': '2023-01-01', # Start date for total data available for training, validation, and testing
+    'end_date': '2024-06-01', # End date for total data available for training, validation, and testing
+    'oot': 3,  # Number of out-of-time validation periods (each period is one month)
+}
+
+
 # ------------------ GBT Classifier -------------------
 from pyspark.ml.classification import GBTClassifier
 

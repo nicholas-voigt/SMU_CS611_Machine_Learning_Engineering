@@ -1,12 +1,10 @@
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
-from airflow.operators.empty import EmptyOperator
 
 from datetime import datetime, timedelta
 
-from utils.data import check_partition_availability
 from configs.data import gold_data_dirs
+from configs.models import DEFAULT_TRAINING_VALUES
 
 
 default_args = {
@@ -20,45 +18,46 @@ with DAG(
     'dag_model_training_pipeline',
     default_args=default_args,
     description='training pipeline runs after manual trigger',
-    schedule='0 15 1 * *',  # At 00:15 on day-of-month 1 --> 1 hour after midnight since data pipeline has to run first
+    schedule=None,  # No schedule, manual trigger only
     start_date=datetime(2023, 1, 1),
-    end_date=datetime(2024, 12, 2),
-    catchup=True,
+    catchup=False,
 ) as dag:
  
     # --- check availability of data in feature store and label store ---
 
-    check_label_store_availability = PythonOperator(
+    check_label_store_availability = BashOperator(
         task_id='check_label_store_availability',
-        python_callable=lambda: check_partition_availability(
-            store_dir=gold_data_dirs['label_store'], 
-            start_date=datetime(2023, 1, 1),  # Adjust as needed
-            end_date=datetime(2024, 4, 1)  # Adjust as needed
+        bash_command=(
+            'cd /opt/airflow/scripts/ml_processing && '
+            f'python data_availability_check.py --store_dir {gold_data_dirs["label_store"]} '
+            f'--start_date {{{{ dag_run.conf.get("start_date", "{DEFAULT_TRAINING_VALUES["start_date"]}") }}}} '
+            f'--end_date {{{{ dag_run.conf.get("end_date", "{DEFAULT_TRAINING_VALUES["end_date"]}") }}}}'
         )
     )
 
-    check_feature_store_availability = PythonOperator(
-        task_id='check_label_store_availability',
-        python_callable=lambda: check_partition_availability(
-            store_dir=gold_data_dirs['feature_store'], 
-            start_date=datetime(2023, 1, 1),  # Adjust as needed
-            end_date=datetime(2024, 4, 1)  # Adjust as needed
+    check_feature_store_availability = BashOperator(
+        task_id='check_feature_store_availability',
+        bash_command=(
+            f'cd /opt/airflow/scripts/ml_processing && '
+            f'python data_availability_check.py --store_dir {gold_data_dirs["feature_store"]} '
+            f'--start_date {{{{ dag_run.conf.get("start_date", "{DEFAULT_TRAINING_VALUES["start_date"]}") }}}} '
+            f'--end_date {{{{ dag_run.conf.get("end_date", "{DEFAULT_TRAINING_VALUES["end_date"]}") }}}}'
         )
     )
-
     # --- prepare data for model training ---
 
     prepare_data = BashOperator(
         task_id='prepare_data',
         bash_command=(
             'cd /opt/airflow/scripts/ml_processing && '
-            'python prepare_data.py --date "{{ ds }}"'
-        ),
+            'python training_data_prep.py '
+            f'--start {{{{ dag_run.conf.get("start_date", "{DEFAULT_TRAINING_VALUES["start_date"]}") }}}} '
+            f'--end {{{{ dag_run.conf.get("end_date", "{DEFAULT_TRAINING_VALUES["end_date"]}") }}}} '
+            f'--oot {{{{ dag_run.conf.get("oot", "{DEFAULT_TRAINING_VALUES["oot"]}") }}}}'
+        )
     )
 
     # --- model training ---
-
-    model_automl_start = EmptyOperator(task_id="model_inference") # necessary?
 
     model_xgb_train = BashOperator(
         task_id='model_xgb_train',
@@ -89,5 +88,5 @@ with DAG(
     check_label_store_availability >> prepare_data # type: ignore
     check_feature_store_availability >> prepare_data # type: ignore
 
-    model_automl_start >> model_xgb_train >> model_promote_best # type: ignore
-    model_automl_start >> model_logreg_train >> model_promote_best # type: ignore
+    prepare_data >> model_xgb_train >> model_promote_best # type: ignore
+    prepare_data >> model_logreg_train >> model_promote_best # type: ignore

@@ -1,7 +1,7 @@
 from pyspark.sql.types import StringType, IntegerType, FloatType, DateType, DecimalType, BooleanType
 
-# BASE_DIR = "/opt/airflow/"
-BASE_DIR = "" # For local testing, set to empty string
+BASE_DIR = "/opt/airflow/"
+# BASE_DIR = "" # For local testing, set to empty string
 
 # Source Data files
 source_data_files = {
