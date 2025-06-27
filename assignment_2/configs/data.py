@@ -34,6 +34,9 @@ gold_data_dirs = {
 # Training Data directory
 training_data_dir = f'{BASE_DIR}datamart/training/'
 
+# Model Prediction directory
+model_prediction_dir = f'{BASE_DIR}datamart/model_prediction/'
+
 # Model Registry directory
 model_registry_dir = f'{BASE_DIR}model_registry/'
 

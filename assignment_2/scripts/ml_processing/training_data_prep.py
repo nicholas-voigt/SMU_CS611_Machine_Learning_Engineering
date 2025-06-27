@@ -102,7 +102,7 @@ if __name__ == "__main__":
     datasets['training'], datasets['validation'], datasets['test'] = df.randomSplit([0.7, 0.15, 0.15], seed=42)
 
     for name, dataset in datasets.items():
-        print(f"Dataset {name} has {dataset.count()} records.")
+        print(f"Dataset {name} has {dataset.count()} records and a label ratio of {dataset.filter(F.col('label') == 1).count() / dataset.count():.2f}.")
     
     # Ensure that training directory exists
     os.makedirs(os.path.dirname(training_data_dir), exist_ok=True)

@@ -5,6 +5,9 @@ from airflow.operators.empty import EmptyOperator
 from airflow.sensors.external_task import ExternalTaskSensor
 
 from datetime import datetime, timedelta
+import os
+
+from configs.data import model_registry_dir
 
 
 default_args = {
@@ -18,7 +21,7 @@ with DAG(
     'dag_model_inference_pipeline',
     default_args=default_args,
     description='inference pipeline run once a month after data pipeline',
-    schedule='0 15 1 * *',  # At 00:15 on day-of-month 1 --> 1 hour after midnight since data pipeline has to run first
+    schedule='15 0 1 * *',  # At 00:15 on day-of-month 1 --> 1 hour after midnight since data pipeline has to run first
     start_date=datetime(2023, 1, 1),
     end_date=datetime(2024, 12, 2),
     catchup=True,
@@ -33,7 +36,7 @@ with DAG(
         allowed_states=['success'],
         failed_states=['failed', 'skipped'],
         mode='reschedule',
-        timeout=60 * 10,  # Wait for 10 minutes
+        timeout=60 * 1,  # Wait for 1 minute
     )
 
     feature_store_completed = ExternalTaskSensor(
@@ -43,20 +46,26 @@ with DAG(
         allowed_states=['success'],
         failed_states=['failed', 'skipped'],
         mode='reschedule',
-        timeout=60 * 10,  # Wait for 10 minutes
+        timeout=60 * 1,  # Wait for 1 minute
     )
 
     # --- check if trained models are available ---
 
     dep_check_trained_models = PythonOperator(
         task_id='dep_check_trained_models',
-        python_callable=lambda: print("Checking if trained models are available...")
-        # This is a placeholder; replace with actual check logic if needed
+        python_callable=lambda: os.path.exists(os.path.join(model_registry_dir, "best_model"))
     )
 
     # --- model inference ---
 
-    model_inference = EmptyOperator(task_id="model_inference")
+    model_inference = BashOperator(
+        task_id='model_inference',
+        bash_command=(
+            'cd /opt/airflow/scripts/ml_processing && '
+            'python model_inference.py '
+            '--date "{{ ds }}"'
+        )
+    )
 
     # --- model monitoring ---
 
@@ -68,19 +77,3 @@ with DAG(
     feature_store_completed >> model_inference # type: ignore
     dep_check_trained_models >> model_inference # type: ignore
     model_inference >> model_monitoring # type: ignore
-
-    # --- model auto training ---
-
-    model_automl_start = EmptyOperator(task_id="model_automl_start")
-    
-    model_1_automl = EmptyOperator(task_id="model_1_automl")
-
-    model_2_automl = EmptyOperator(task_id="model_2_automl")
-
-    model_automl_completed = EmptyOperator(task_id="model_automl_completed")
-    
-    # Define task dependencies to run scripts sequentially
-    feature_store_completed >> model_automl_start
-    label_store_completed >> model_automl_start
-    model_automl_start >> model_1_automl >> model_automl_completed
-    model_automl_start >> model_2_automl >> model_automl_completed
