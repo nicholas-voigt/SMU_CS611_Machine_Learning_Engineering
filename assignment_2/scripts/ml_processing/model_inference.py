@@ -3,7 +3,6 @@ import argparse
 
 from pyspark.sql import SparkSession
 from pyspark.ml import PipelineModel
-from pyspark.ml.evaluation import BinaryClassificationEvaluator
 
 from utils.validators import validate_date, build_partition_name
 from utils.data import load_data

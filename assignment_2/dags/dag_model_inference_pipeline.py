@@ -21,9 +21,9 @@ with DAG(
     'dag_model_inference_pipeline',
     default_args=default_args,
     description='inference pipeline run once a month after data pipeline',
-    schedule='15 0 1 * *',  # At 00:15 on day-of-month 1 --> 1 hour after midnight since data pipeline has to run first
+    schedule='0 0 1 * *',  # At 00:00 on day-of-month 1
     start_date=datetime(2023, 1, 1),
-    end_date=datetime(2024, 12, 2),
+    end_date=datetime(2024, 12, 1),
     catchup=True,
 ) as dag:
  
@@ -69,7 +69,14 @@ with DAG(
 
     # --- model monitoring ---
 
-    model_monitoring = EmptyOperator(task_id="model_1_monitor")
+    model_monitoring = BashOperator(
+        task_id='model_monitoring',
+        bash_command=(
+            'cd /opt/airflow/scripts/ml_processing && '
+            'python model_monitoring.py '
+            '--date "{{ ds }}"'
+        )
+    )
 
     # --- Task Dependencies ---
 
