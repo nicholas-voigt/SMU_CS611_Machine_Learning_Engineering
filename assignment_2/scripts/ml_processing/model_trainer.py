@@ -49,7 +49,7 @@ if __name__ == "__main__":
     assembler = VectorAssembler(
         inputCols=[col for col in train_df.columns if col not in ['Customer_ID', 'label', 'snapshot_date']], 
         outputCol='features',
-        handleInvalid='skip'  # This will drop invalid rows instead of throwing an error
+        handleInvalid='keep'  # This will keep invalid rows instead of dropping them
     )
     
     # Load Model Configuration
