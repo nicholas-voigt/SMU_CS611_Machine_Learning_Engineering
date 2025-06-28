@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
@@ -141,3 +142,9 @@ def check_partition_availability(store_dir: str, start_date: datetime, end_date:
         current_date += relativedelta(months=1)  # Increment by one month
 
     return True
+
+
+def load_metrics(metrics_path):
+    with open(metrics_path, "r") as f:
+        return json.load(f)
+

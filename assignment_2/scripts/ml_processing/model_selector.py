@@ -5,11 +5,7 @@ from pyspark.sql import SparkSession
 from pyspark.ml import PipelineModel
 
 from configs.data import model_registry_dir
-
-
-def load_metrics(metrics_path):
-    with open(metrics_path, "r") as f:
-        return json.load(f)
+from utils.data import load_metrics
 
 
 def select_best_model(models_dir, criterion="val_auc"):
@@ -19,7 +15,7 @@ def select_best_model(models_dir, criterion="val_auc"):
 
     for model_name in os.listdir(models_dir):
         model_sub_dir = os.path.join(models_dir, model_name)
-        if not os.path.isdir(model_sub_dir):
+        if not os.path.isdir(model_sub_dir) or model_name == 'best_model':
             continue
         
         for element in os.listdir(model_sub_dir):
@@ -73,8 +69,8 @@ if __name__ == "__main__":
 
     # Save the best model if found in best registry
     if best_model and best_info:
-        best_model.save(os.path.join(model_registry_dir, 'best_model'))
-        with open(f"{os.path.join(model_registry_dir, 'best_model', 'best_model')}_metadata.json", "w") as f:
+        best_model.write().overwrite().save(os.path.join(model_registry_dir, 'best_model'))
+        with open(file=os.path.join(model_registry_dir, 'best_model', 'best_model_metadata.json'), mode="w") as f:
             json.dump(best_info, f, indent=4)
 
         print(f"Best model saved to {os.path.join(model_registry_dir, 'best_model')}")
