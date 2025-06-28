@@ -182,6 +182,7 @@ if __name__ == "__main__":
     # Transform Loan Type into multiple type columns with respective counts
     print("Transforming Loan Type into multiple type columns with respective counts...")
     df = encode_loan_types_with_counts(df=df, loan_column_name="Type_of_Loan")
+    df = df.fillna(0, subset=[col for col in df.columns if col not in ['Customer_ID', 'snapshot_date']])  # Fill NaN with 0 for all columns except Customer_ID and snapshot_date
 
     print("Feature Engineering completed.")
     pyspark_info(df)
