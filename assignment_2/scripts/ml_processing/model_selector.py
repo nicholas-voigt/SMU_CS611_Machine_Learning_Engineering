@@ -19,6 +19,8 @@ def select_best_model(models_dir, criterion="val_auc"):
 
     for model_name in os.listdir(models_dir):
         model_sub_dir = os.path.join(models_dir, model_name)
+        if not os.path.isdir(model_sub_dir):
+            continue
         
         for element in os.listdir(model_sub_dir):
             if os.path.isdir(os.path.join(model_sub_dir, element)):
@@ -71,10 +73,10 @@ if __name__ == "__main__":
 
     # Save the best model if found in best registry
     if best_model and best_info:
-        best_model.save(os.path.join(model_registry_dir, "best_model"))
-        with open(os.path.join(model_registry_dir, "best_model", "metrics.json"), "w") as f:
-            json.dump(best_info["metrics"], f, indent=4)
-    
+        best_model.save(os.path.join(model_registry_dir, 'best_model'))
+        with open(f"{os.path.join(model_registry_dir, 'best_model', 'best_model')}_metadata.json", "w") as f:
+            json.dump(best_info, f, indent=4)
+
         print(f"Best model saved to {os.path.join(model_registry_dir, 'best_model')}")
     else:
         print("No best model found to save.")
